@@ -143,7 +143,7 @@ public class HttpKernel :
             var lastSpan = parsedDoc.SyntaxTree.RootNode.ChildNodes
                 .OfType<HttpRequestNode>()
                 .FirstOrDefault(n => n.Text == requestNodes.Last().Text)?.Span;
-            if(lastSpan != null)
+            if (lastSpan != null)
             {
                 var docVariableNodes = parsedDoc.SyntaxTree.RootNode.ChildNodes.OfType<HttpVariableDeclarationAndAssignmentNode>();
                 var docVariableNames = docVariableNodes.Where(n => n.Span.Start < lastSpan?.Start).Select(n => n.DeclarationNode?.VariableName).ToHashSet();
@@ -155,7 +155,7 @@ public class HttpKernel :
                     }
                 }
             }
-              
+
         }
         else
         {
