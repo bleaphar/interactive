@@ -137,7 +137,7 @@ internal class HttpRequestParser
             {
                 if (node is null)
                 {
-                    if (CurrentToken is { Kind: TokenKind.Word } or ({ Kind: TokenKind.Punctuation } and ({ Text: "/" } or {Text: "'" } or { Text: "\""})))
+                    if (CurrentToken is { Kind: TokenKind.Word } or ({ Kind: TokenKind.Punctuation } and ({ Text: "/" } or { Text: "'" } or { Text: "\"" })))
                     {
                         node = new HttpVariableValueNode(_sourceText, _syntaxTree);
 
@@ -547,6 +547,18 @@ internal class HttpRequestParser
             CurrentToken is { Text: "{" } &&
             CurrentTokenPlus(1) is { Text: "{" };
 
+        private bool IsAtStartOfEscapedEmbeddedExpression() =>
+            CurrentToken is { Text: "\\" } &&
+            CurrentTokenPlus(1) is { Text: "{" } &&
+            CurrentTokenPlus(2) is { Text: "\\" } &&
+            CurrentTokenPlus(3) is { Text: "{" };
+
+        private bool IsAtEndOfEscpapedEmbeddedExpression() =>
+            CurrentToken is { Text: "\\" } &&
+            CurrentTokenPlus(1) is { Text: "}" } &&
+            CurrentTokenPlus(2) is { Text: "\\" } &&
+            CurrentTokenPlus(3) is { Text: "}" };
+
         private HttpEmbeddedExpressionNode ParseEmbeddedExpression()
         {
             var node = new HttpEmbeddedExpressionNode(_sourceText, _syntaxTree);
@@ -561,6 +573,33 @@ internal class HttpRequestParser
 
             return node;
         }
+
+        private HttpEscapedEmbeddedExpressionNode ParseEscapedEmbeddedExpression()
+        {
+            var node = new HttpEscapedEmbeddedExpressionNode(_sourceText, _syntaxTree);
+
+            ParseEscapedExpressionStart(node);
+            node.Add(ParseExpression());
+            ParseEscapedExpressionEnd(node);
+            return node;
+        }
+
+        private void ParseEscapedExpressionStart(HttpEscapedEmbeddedExpressionNode node)
+        {
+            ConsumeCurrentTokenInto(node); // parse the first \
+            ConsumeCurrentTokenInto(node); // parse the first {
+            ConsumeCurrentTokenInto(node); // parse the second \
+            ConsumeCurrentTokenInto(node); // parse the second {
+        }
+
+        private void ParseEscapedExpressionEnd(HttpEscapedEmbeddedExpressionNode node)
+        {
+            ConsumeCurrentTokenInto(node); // parse the first \
+            ConsumeCurrentTokenInto(node); // parse the first }
+            ConsumeCurrentTokenInto(node); // parse the second \
+            ConsumeCurrentTokenInto(node); // parse the second }
+        }
+
 
         private HttpExpressionStartNode ParseExpressionStart()
         {
@@ -578,15 +617,16 @@ internal class HttpRequestParser
             ParseLeadingWhitespaceAndComments(node);
 
             while (MoreTokens() &&
-                   !(CurrentToken is { Text: "}" } &&
-                     CurrentTokenPlus(1) is { Text: "}" }))
+                   !((CurrentToken is { Text: "}" } &&
+                     CurrentTokenPlus(1) is { Text: "}" })
+                        || IsAtEndOfEscpapedEmbeddedExpression()))
             {
                 ConsumeCurrentTokenInto(node);
             }
 
             return ParseTrailingWhitespace(node);
         }
-
+    
         private HttpExpressionEndNode? ParseExpressionEnd()
         {
             if (CurrentToken?.Text is "}" &&
@@ -798,6 +838,10 @@ internal class HttpRequestParser
                     if (IsAtStartOfEmbeddedExpression())
                     {
                         node.Add(ParseEmbeddedExpression());
+                    }
+                    else if (IsAtStartOfEscapedEmbeddedExpression())
+                    {
+                        node.Add(ParseEscapedEmbeddedExpression());
                     }
                     else
                     {

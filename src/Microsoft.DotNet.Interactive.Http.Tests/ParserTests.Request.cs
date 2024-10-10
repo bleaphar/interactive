@@ -1,8 +1,10 @@
 ﻿// Copyright (c) .NET Foundation and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System;
 using System.Linq;
 using System.Net.Http;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.DotNet.Interactive.Http.Parsing;
 using Microsoft.DotNet.Interactive.Parsing.Tests.Utility;
@@ -284,6 +286,8 @@ public partial class HttpParserTests
             bindingResult.Value.RequestUri.ToString().Should().Be("https://httpbin.org/anything");
         }
 
+
+
         [Fact]
         public void binding_for_variable_in_header_is_correct()
         {
@@ -315,6 +319,154 @@ public partial class HttpParserTests
             bindingResult.IsSuccessful.Should().BeTrue();
             bindingResult.Value.RequestUri.ToString().Should().Be("https://httpbin.org/anything");
             bindingResult.Value.Headers.ToString().Should().Be("");
+        }
+
+        /*[Fact]
+        public void escaping_variable_declaration_in_variable_is_allowed()
+        {
+            var result = Parse(
+                """             
+                @host = https://\{\{httpbin.org\}\}      
+                @contentType = application/json
+
+                POST {{host}}/anything HTTP/1.1
+                content-type: {{contentType}}
+
+                {
+                    "name": "sample1",
+                    "password": \{\{password\}\}
+                }
+
+                
+                """
+                );
+
+            var requestNode = result.SyntaxTree.RootNode.ChildNodes
+                                    .Should().ContainSingle<HttpRequestNode>().Which;
+
+            var bindingResult = requestNode.TryGetHttpRequestMessage(node =>
+            {
+                return node.CreateBindingFailure(CreateDiagnosticInfo(""));
+            });
+
+            bindingResult.IsSuccessful.Should().BeTrue();
+            bindingResult.Value.RequestUri.ToString().Should().Be("https://httpbin.org/anything");
+            bindingResult.Value.Headers.ToString().Should().Be("");
+            string requestBody = await bindingResult.Value.Content.ReadAsStringAsync().ConfigureAwait(true);
+            requestBody.Should().Be("""
+                {
+                    "name": "sample1",
+                    "password": {{ password }}
+                }
+                """);
+        }
+
+        [Fact]
+        public void escaping_variable_declaration_in_url_is_allowed()
+        {
+            var result = Parse(
+                """             
+                @hostname = httpbin.org
+                @host = https://{{hostname}}      
+                @contentType = application/json
+
+                POST \{\{host\}\}/anything HTTP/1.1
+                content-type: {{contentType}}
+
+                {
+                    "name": "sample1",
+                    "password": \{\{password\}\}
+                }
+
+                
+                """
+                );
+
+            var requestNode = result.SyntaxTree.RootNode.ChildNodes
+                                    .Should().ContainSingle<HttpRequestNode>().Which;
+
+            var bindingResult = requestNode.TryGetHttpRequestMessage(node =>
+            {
+                return node.CreateBindingFailure(CreateDiagnosticInfo(""));
+            });
+
+            bindingResult.IsSuccessful.Should().BeTrue();
+            bindingResult.Value.RequestUri.ToString().Should().Be("https://{{ httpbin.org }}/anything"); 
+
+        }
+
+        [Fact]
+        public void escaping_variable_declaration_in_header_is_allowed()
+        {
+            var result = Parse(
+                """             
+                @hostname = httpbin.org
+                @host = https://{{hostname}}      
+                @contentType = application/json
+
+                POST {{host}}/anything HTTP/1.1
+                content-type: \{\{contentType\}\}
+
+                {
+                    "name": "sample1"
+                }
+
+                
+                """
+                );
+
+            var requestNode = result.SyntaxTree.RootNode.ChildNodes
+                                    .Should().ContainSingle<HttpRequestNode>().Which;
+
+            var bindingResult = requestNode.TryGetHttpRequestMessage(node =>
+            {
+                return node.CreateBindingFailure(CreateDiagnosticInfo(""));
+            });
+
+            bindingResult.IsSuccessful.Should().BeTrue();
+            bindingResult.Value.Headers.ToString().Should().Be("content-type: {{ contentType }}");
+           
+        }*/
+
+    [Fact]
+        public async Task escaping_variable_declaration_in_body_is_allowed()
+        {
+            var result = Parse(
+                """             
+                @hostname = httpbin.org
+                @host = https://{{hostname}}      
+                @contentType = application/json
+
+                POST {{host}}/anything HTTP/1.1
+                content-type: {{contentType}}
+
+                {
+                    "name": "sample1",
+                    "password": \{\{password\}\}
+                }
+
+                
+                """
+                );
+
+            var requestNode = result.SyntaxTree.RootNode.ChildNodes
+                                    .Should().ContainSingle<HttpRequestNode>().Which;
+
+            var bindingResult = requestNode.TryGetHttpRequestMessage(node =>
+            {
+                return node.CreateBindingFailure(CreateDiagnosticInfo(""));
+            });
+
+            bindingResult.IsSuccessful.Should().BeTrue();
+            bindingResult.Value.RequestUri.ToString().Should().Be("https://httpbin.org/anything");
+            bindingResult.Value.Headers.ToString().Should().Be("");
+            string requestBody = await bindingResult.Value.Content.ReadAsStringAsync().ConfigureAwait(true);
+            requestBody.Should().Be("""
+                {
+                    "name": "sample1",
+                    "password": {{ password }}
+                }
+                """);
         }
     }
 }

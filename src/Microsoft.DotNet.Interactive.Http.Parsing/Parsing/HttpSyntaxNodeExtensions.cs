@@ -3,6 +3,7 @@
 
 #nullable enable
 
+using Microsoft.DotNet.Interactive.Http.Parsing.Parsing;
 using System.Collections.Generic;
 using System.Text;
 
@@ -35,6 +36,11 @@ internal static class HttpSyntaxNodeExtensions
                 }
 
                 diagnostics.AddRange(innerResult.Diagnostics);
+            }
+            else if (node is HttpEscapedEmbeddedExpressionNode en)
+            {
+                var nodeText = en.ResolveExpression();
+                text.Append(nodeText);
             }
             else
             {
